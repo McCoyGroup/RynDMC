@@ -1,5 +1,11 @@
 
+
+#ifndef PY_EXT_LIB_H
+#define PY_EXT_LIB_H
+
 #include "Python.h"
+#include <vector>
+#include <string>
 
 /******************************** RESCURSIVE MACROS ********************************/
 // Silly stuff for getting recursive macros in C++. Helpful for cleanup work
@@ -66,9 +72,26 @@ _61,_62,_63,N,...) N
 /******************************** FUNCTIONS ********************************/
 // These are all the exposed functions in the PyExtLib.cpp file
 
+static int _DEBUG_LEVEL = 0;
+int _DebugPrint(int level, const char *fmt, ...);
+int _DebugMessage(int level, const char *msg);
+int _DebugPrintObject(int lvl, PyObject *o);
 
+// this is currently not the most complete list
 Py_buffer _GetDataBuffer(PyObject *data);
+PyObject *_ArrayAsType(PyObject *array, const char *type);
+PyObject *_CreateFromNumPy(const char *ctor, PyObject *args, PyObject *kwargs);
+PyObject *_CreateFromNumPy(const char *ctor, PyObject *args, const char *dtype);
+PyObject *_CreateIdentity(int m, const char *dtype);
+PyObject *_CreateArray(int depth, int *dims, const char *ctor, const char *dtype);
+PyObject *_CreateArray(int depth, int *dims, const char *ctor);
 
+std::vector<long> _GetNumpyShape(PyObject* ndarray);
+
+size_t _idx2D(int i, int j, int n, int m);
+size_t _idx3D(int i, int j, int k, int n, int m, int l);
+
+/******************************** TEMPLATES ********************************/
 // I guess all templates need to be exposed in the header...?
 template<typename T>
 T *_GetDataBufferArray(Py_buffer *view) {
@@ -106,16 +129,38 @@ void _SetDataBuffer(PyObject *data, void *buff) {
 
 }
 
-static int _DEBUG_LEVEL = 0;
-int _DebugPrint(int level, const char *fmt, ...);
-int _DebugMessage(int level, const char *msg);
-int _DebugPrintObject(int lvl, PyObject *o);
+// might be worth writing this kinda thing in general...
+size_t _idx2D(int i, int j, int n, int m);
+size_t _idx3D(int i, int j, int k, int n, int m, int l);
 
-PyObject *_ArrayAsType(PyObject *array, const char *type);
+template<typename T, typename D>
+T _VectorsFromNumpy(PyObject* ndarray) {
 
-PyObject *_CreateFromNumPy(const char *ctor, PyObject *args, PyObject *kwargs);
-PyObject *_CreateFromNumPy(const char *ctor, PyObject *args, const char *dtype);
-PyObject *_CreateIdentity(int m, const char *dtype);
-PyObject *_CreateArray(int depth, int *dims, const char *ctor, const char *dtype);
-PyObject *_CreateArray(int depth, int *dims, const char *ctor);
+    std::vector<long> shape = _GetNumpyShape(ndarray);
+    long prod = 1;
+    for ( size_t i = 0; i < shape.size(); i++ ) {
+        prod *= shape[i];
+    }
+    D* buf = _GetDataBuffer(ndarray);
+    T vec (buf, sizeof(D)*prod); // basically has to be a vector type
+    return vec;
 
+}
+
+template<typename T>
+T _VectorsFromNumpy(PyObject* ndarray) {
+
+    return _VectorsFromNumpy<T, double>(ndarray);
+
+}
+
+const char *_GetString( PyObject* s, PyObject *pyStr);
+const char *_Repr(PyObject *o, PyObject *repr);
+#if PY_MAJOR_VERSION == 3
+const char *_GetString( PyObject* s, const char *enc, const char *err, PyObject *pyStr);
+#else
+const char *_GetString( PyObject* s);
+const char *_Repr(PyObject *o);
+#endif
+
+#endif // PY_EXT_LIB_H

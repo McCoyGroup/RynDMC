@@ -1,6 +1,9 @@
 #include "Python.h"
 #include "PyExtLib.h"
 
+
+typedef double (*potFuncPtr)(std::vector<std::vector<double> >, std::vector<std::string>);
+
 static PyObject *CPotentialLib_callPot
     ( PyObject *, PyObject * );
 

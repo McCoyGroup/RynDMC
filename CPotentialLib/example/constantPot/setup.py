@@ -5,13 +5,13 @@ lib_dir = os.path.dirname(os.path.abspath(__file__))
 libname="constantPot"
 
 def get_extension():
-    Extension(
+    return Extension(
         libname,
         sources = [ libname+'.cpp' ]
     )
 
 def setup_compile():
-    setup(
+    return setup(
         name = libname,
         version = '1.0',
         description = 'A C potential to hook into python',

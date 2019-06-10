@@ -28,24 +28,22 @@ double *_GetDoubleDataBufferArray(Py_buffer *view) {
     return _GetDataBufferArray<double>(view);
 }
 double *_GetDoubleDataArray(PyObject *data) {
-    return _GetDataArray<double>(view);
+    return _GetDataArray<double>(data);
 }
 
-inline int ind3d(int i, int j, int k, int m, int l) {
-    return (m*l) * i + (l*j) + k;
+int ind3D(int i, int j, int k, int m, int l) {
+    return _idx3D(i, j, k, 0, m, l);
 }
 
 std::vector< std::vector<double> > _getWalkerCoords(double* raw_data, int i, Py_ssize_t num_atoms) {
     std::vector< std::vector<double> > walker_coords(num_atoms, std::vector<double>(3));
     for (int j = 0; j<num_atoms; j++) {
         for (int k = 0; k<3; k++) {
-            walker_coords[j][k] = raw_data[ind3d(i, j, k, num_atoms, 3)];
+            walker_coords[j][k] = raw_data[ind3D(i, j, k, num_atoms, 3)];
         }
     };
     return walker_coords;
 }
-
-typedef double *(*potPtr)( std::vector< std::vector<double> >, std::vector<std::string> ) potFuncPtr;
 
 /******************** CALL POINTERED POTENTIAL ****************************/
 // I catch all the errors (I think) and just never let anyone know there was an issue
@@ -77,10 +75,10 @@ double _callPtrPot(
 // Just does it for one geometry
 FUNCWITHARGS(CPotentialLib_callPot) {
 
-    PyObject* ptr, atoms, coords;
+    PyObject *ptr, *atoms, *coords;
     PARSEARGS("OOO", &ptr, &atoms, &coords);
 
-    potFuncPtr potPtr = PyCapsule_GetPointer(ptr, "potential");
+    potFuncPtr potPtr = (potFuncPtr) PyCapsule_GetPointer(ptr, "potential");
     // asserts basically that ptr will be a pointer to a potential function
     // but if this doesn't hold you can get segfaults and stuff I bet
 
@@ -191,10 +189,10 @@ std::vector<std::vector<double> > _callMPIPot(
 
 FUNCWITHARGS(CPotentialLib_callPotMPI) {
 
-    PyObject* ptr, atoms, coords;
-    PARSEARGS("OOO", &pts, &atoms, &coords)
+    PyObject *ptr, *atoms, *coords;
+    PARSEARGS("OOO", &ptr, &atoms, &coords)
 
-    potFuncPtr potPtr = PyCapsule_GetPointer(ptr, "potential");
+    potFuncPtr potPtr = (potFuncPtr) PyCapsule_GetPointer(ptr, "potential");
 
     // Assumes we get n atom type names
     Py_ssize_t num_atoms = PyObject_Length(atoms);
@@ -243,10 +241,10 @@ FUNCWITHARGS(CPotentialLib_closeMPI) {
 FUNCWITHARGS(CPotentialLib_callPotVec) {
     // vector version of callPot
 
-    PyObject* ptr, atoms, coords;
-    PARSEARGS("OOO", &pts, &atoms, &coords)
+    PyObject *ptr, *atoms, *coords;
+    PARSEARGS("OOO", &ptr, &atoms, &coords)
 
-    potFuncPtr potPtr = PyCapsule_GetPointer(ptr, "potential");
+    potFuncPtr potPtr = (potFuncPtr) PyCapsule_GetPointer(ptr, "potential");
 
     // Assumes we get n atom type names
     Py_ssize_t num_atoms = PyObject_Length(atoms);
@@ -260,7 +258,7 @@ FUNCWITHARGS(CPotentialLib_callPotVec) {
     int dims[1] = {num_walkers};
     PyObject* pots = _CreateArray(1, dims, "zeros", "float64");
     double* pot_data = _GetDoubleDataArray(pots);
-    for (n = 0; n < num_walkers; n++) {
+    for ( int n = 0; n < num_walkers; n++) {
         pot_data[n] = _callPtrPot(potPtr, _getWalkerCoords(raw_data, n, num_atoms), atom_types);
     };
 

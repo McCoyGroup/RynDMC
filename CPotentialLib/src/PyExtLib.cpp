@@ -3,8 +3,6 @@
 */
 
 #include "PyExtLib.h"
-#include <vector>
-#include <string>
 
 /******************************** ARRAY MANIPULATION HELPERS ********************************/
 
@@ -15,27 +13,6 @@ Py_buffer _GetDataBuffer(PyObject *data) {
     return view;
 }
 
-//template<typename T>
-//T *_GetDataBufferArray(Py_buffer *view) {
-
-//    T *c_data;
-//    if ( view == NULL ) return NULL;
-//    c_data = (T *) view->buf;
-//    if (c_data == NULL) {
-//        PyBuffer_Release(view);
-//    }
-//    return c_data;
-
-//}
-
-//template<typename T>
-//T *_GetDataArray(PyObject *data) {
-//    Py_buffer view = _GetDataBuffer(data);
-//    T *array = _GetDataBufferArray<T>(&view);
-//    CHECKNULL(array);
-//    return array;
-//}
-
 void _CopyDataBuffer(PyObject *data, void *buff, long len, int dsize) {
 
     Py_buffer view_obj = _GetDataBuffer(data);
@@ -43,20 +20,6 @@ void _CopyDataBuffer(PyObject *data, void *buff, long len, int dsize) {
     if (len) memcpy(view->buf, buff, len*dsize);
 
 }
-
-//template<typename T>
-//void _CopyDataBuffer(PyObject *data, void *buff, long len) {
-//    _CopyDataBuffer(data, buff, len, sizeof(T));
-//}
-
-//template<typename T>
-//void _SetDataBuffer(PyObject *data, void *buff) {
-
-//    Py_buffer view_obj = _GetDataBuffer(data);
-//    Py_buffer *view = &view_obj;
-//    view->buf = (T *) buff;
-
-//}
 
 /****************************** STRING HANDLING **********************************/
 #if PY_MAJOR_VERSION == 3
@@ -135,7 +98,7 @@ int _DebugPrintObject(int lvl, PyObject *o){
 
 PyObject *_WrapPointer( void *ptr, const char* name) {
     PyObject *link_cap = PyCapsule_New(ptr, name, NULL);
-    _MLDebugPrint(4, "Attaching pointer (%p) to capsule (%s)", ptr, name);
+//    _DebugPrint(4, "Attaching pointer (%p) to capsule (%s)", ptr, name);
     if (link_cap == NULL) {
         PyErr_SetString(PyExc_TypeError, "couldn't create capsule object");
         return NULL;
@@ -226,4 +189,35 @@ PyObject *_CreateArray(int depth, int *dims, const char *ctor, const char *dtype
 }
 PyObject *_CreateArray(int depth, int *dims, const char *ctor) {
     return _CreateArray(depth, dims, ctor, "float64");
+}
+
+/**************************** NUMPY TO C++ ****************************************/
+
+std::vector<long> _GetNumpyShape(PyObject* ndarray) {
+    PyObject *shp = PyObject_GetAttrString(ndarray, "shape");
+    int nums = PyObject_Length(shp);
+//    CHECKCLEAN(nums, shp);
+    std::vector<long> shape(nums);
+    PyObject *iter = PyObject_GetIter(shp);
+    PyObject *item; int i = 0; long n;
+    while ( (item = PyIter_Next(iter)) ) {
+        n = PyLong_AsLong(item);
+        Py_XDECREF(item);
+        if (PyErr_Occurred()) { break; }
+        shape[i++] = n;
+    };
+
+    Py_XDECREF(shp);
+
+    return shape;
+
+};
+
+/***** MISC *****/
+// might be worth writing this kinda thing in general...
+size_t _idx2D(int i, int j, int n, int m) {
+    return m * i + j;
+}
+size_t _idx3D(int i, int j, int k, int n, int m, int l) {
+    return m * l * i + l * j + k;
 }

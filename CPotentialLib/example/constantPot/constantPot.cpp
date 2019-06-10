@@ -5,7 +5,7 @@
 // All the needs to be changed is this
 
 double constantPot(std::vector<std::vector<double> >, std::vector<std::string>) {
-    return 52.0
+    return 52.0;
 }
 
 /******************** FIND AND REPLACE ON constantPot FROM HERE ON OUT ****************************/
@@ -15,7 +15,7 @@ PyObject *_WrapFunction( void *ptr) {
     if (link_cap == NULL) {
         PyErr_SetString(PyExc_TypeError, "couldn't create capsule object");
         return NULL;
-    } else if (!PyCapsule_IsValid(link_cap, name)) {
+    } else if (!PyCapsule_IsValid(link_cap, "potential")) {
         PyErr_SetString(PyExc_ValueError, "couldn't add pointer to invalid capsule object");
         Py_XDECREF(link_cap);
         return NULL;
@@ -28,7 +28,7 @@ static PyMethodDef constantPotMethods[] = {
 };
 
 
-#ifn PY_MAJOR_VERSION > 2
+#if PY_MAJOR_VERSION > 2
 
 const char constantPot_doc[] = "exposes constantPot as a potential";
 static struct PyModuleDef constantPotModule = {
@@ -40,11 +40,11 @@ static struct PyModuleDef constantPotModule = {
    constantPotMethods
 };
 
-PyMODINIT_FUNC PyInit_constnatPot(void)
+PyMODINIT_FUNC PyInit_constantPot(void)
 {
     PyObject * m = PyModule_Create(&constantPotModule);
     if ( m == NULL ) return NULL;
-    PyModule_AddObject(m, "potential", _WrapFunction( *constantPot ));
+    PyModule_AddObject(m, "potential", _WrapFunction( (void *) *constantPot ));
 
     return m;
 }
@@ -54,7 +54,7 @@ PyMODINIT_FUNC initconstantPot(void)
 {
     m = Py_InitModule("constantPot", constantPotMethods);
     if ( m == NULL ) return NULL;
-    PyModule_AddObject(m, "potential", _WrapFunction( *constantPot ));
+    PyModule_AddObject(m, "potential", _WrapFunction( (void *) *constantPot ));
 }
 
 #endif

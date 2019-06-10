@@ -12,14 +12,14 @@ def get_macros():
         macs.append(("USE_MPI", None))
 
 def get_extension():
-    Extension(
+    return Extension(
         libname,
-        sources = [ libname+'.cpp' ],
+        sources = [ libname+'.cpp', "PyExtLib.cpp" ],
         define_macros = get_macros()
     )
 
 def setup_compile():
-    setup(
+    return setup(
         name = 'CPotentialLib',
         version = '1.0',
         description = 'A little library for hooking C potentials into python',
