@@ -17,6 +17,7 @@ class WalkerSet:
                  masses = None,
                  sigmas = None,
                  timestep = 1, # I don't like having this here but I can't really help it...
+                 weights = None,
                  _initialize = True
                  ):
 
@@ -48,6 +49,7 @@ class WalkerSet:
         self.base_coords = coords
         self.sigmas = sigmas
         self.coords = initial_walkers
+        self.weights = weights
 
     def get_displacements(self, n=1, sigmas = None):
         """Computes n random Gaussian displacements from the sigmas and the timestep

@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np, multiprocessing as mp
 from CPotentialLib import CPotential
 
 ##################################################################################################################
@@ -15,10 +15,25 @@ class PotentialEvaluator:
         if type(func).__name__ == "PyCapsule": #poor man's type check...
             self.f = CPotential(func, mode = mode)
         self.mode = mode
+        self._pool = None
+
+    def _call_serial(self, atoms, coords):
+        return np.array([ self.f(atoms, coord) for coord in coords ])
+    def _call_parallel(self, atoms, coords, map_switch_bytes = 50000, chunk_size = 100):
+        from sys import getsizeof as size
+        if self._pool is None:
+            self._pool = mp.Pool()
+        if size(coords[0])<map_switch_bytes:
+            res = self._pool.map(self.f, coords, chunk_size)
+        else:
+            res = self._pool.imap(self.f, coords, chunk_size)
+        return np.array(res)
 
     def call(self, atoms, coords):
         if self.mode == "single":
-            return np.array([ self.f(atoms, coord) for coord in coords ])
+            return self._call_serial(atoms, coords)
+        elif self.mode == "parallel":
+            return self._call_parallel(atoms, coords)
         else:
             return self.f(atoms, coords)
 
