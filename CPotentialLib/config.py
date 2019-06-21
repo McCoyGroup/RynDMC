@@ -1,4 +1,0 @@
-
-CPotentialCompilerConfig = {
-    "UseMPI" : False
-}

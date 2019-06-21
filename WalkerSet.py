@@ -1,5 +1,5 @@
 from McUtils.Data import UnitsData, AtomData
-from Coordinerds.CoordinateSystems import CoordinateSet
+from Psience.Coordinerds.CoordinateSystems import CoordinateSet
 import numpy as np
 
 
@@ -16,7 +16,6 @@ class WalkerSet:
                  initial_walkers=5000,
                  masses = None,
                  sigmas = None,
-                 timestep = 1, # I don't like having this here but I can't really help it...
                  weights = None,
                  _initialize = True
                  ):
@@ -45,11 +44,22 @@ class WalkerSet:
         # I could add some fancy property tricks to prevent this stuff from being mangled, but it's not worth it...
         self.atoms = atoms
         self.masses = masses
-        self.timestep = timestep
-        self.base_coords = coords
         self.sigmas = sigmas
         self.coords = initial_walkers
         self.weights = weights
+
+    def initialize(self, time_step, D):
+        """Sets up necessary parameters for use in calculating displacements and stuff
+
+        :param deltaT:
+        :type deltaT:
+        :param D:
+        :type D:
+        :return:
+        :rtype:
+        """
+        self.time_step = time_step
+        self.sigmas = np.sqrt((2 * D * time_step) / self.masses)
 
     def get_displacements(self, n=1, sigmas = None):
         """Computes n random Gaussian displacements from the sigmas and the timestep
@@ -63,9 +73,19 @@ class WalkerSet:
         """
         if sigmas is None:
             sigmas = self.sigmas
-        return np.array([
-            np.random.normal(0.0, sig, (len(self.coords), 3)) for sig in sigmas
-        ]).T
+        shape = (n, ) + self.coords.shape[:-2] + self.coords.shape[-1:]
+        disps = np.array([
+            np.random.normal(0.0, sig, size = shape) for sig in sigmas
+        ])
+        # transpose seems to be somewhat broken (?)
+        # disp_roll = np.arange(len(disps.shape))
+        # disp_roll = np.concatenate((np.roll(disp_roll[:-1], 1), disp_roll[-1:]))
+        # print(disp_roll)
+        # disps = disps.transpose(disp_roll)
+
+        for i in range(len(shape) - 1):
+            disps = disps.swapaxes(i, i + 1)
+        return disps
 
     def get_displaced_coords(self, n=1):
         """Computes n new displaced coordinates based on the original ones from the sigmas
@@ -75,5 +95,17 @@ class WalkerSet:
         :return:
         :rtype:
         """
-        accum_disp = np.cumsum(self.get_displacements(n))
-        return self.coords + accum_disp # hoping the broadcasting makes this work...
+        accum_disp = np.cumsum(self.get_displacements(n), axis=1)
+        return np.broadcast_to(self.coords, (n,) + self.coords.shape) + accum_disp
+
+    def displace(self, n=1):
+        """Generates multiple displacements and binds the last one
+
+        :param n:
+        :type n:
+        :return:
+        :rtype:
+        """
+        coords = self.get_displaced_coords(n)
+        self.coords = coords[-1]
+        return coords

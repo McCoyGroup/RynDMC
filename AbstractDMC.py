@@ -12,37 +12,41 @@ from .PotentialEvaluator import PotentialEvaluator
 class AbstractDMC(metaclass=ABCMeta):
     """A completely abstract implementation of DMC"""
 
-    def __init__(self, walker_set, potential, stack_len = None, log_file = None):
+    def __init__(self,
+                 name, description,
+                 walker_set = None,
+                 D = None, time_step = None,
+                 steps_per_propagation = None,
+                 num_time_steps = None,
+                 potential = None,
+                 descendent_weighting_delay = None,
+                 log_file = None
+                 ):
+        from collections import deque
+
+        self.name = name
+        self.description = description
+
         if not isinstance(walker_set, WalkerSet):
             walker_set=WalkerSet(*walker_set)
         self.walkers = walker_set
+        self.D = D
+        self.time_step = time_step
+        self.walkers.initialize(self.time_step, self.D)
+
         if not isinstance(potential, PotentialEvaluator):
             potential = PotentialEvaluator(potential)
         self.potential = potential
-        if stack_len is None:
-            self.stack = None
-        else:
-            from collections import deque
-            self.stack = deque(maxlen=stack_len)
-                # basically a circular buffer that we can feed stuff into in O(1) time
-                # this out to get used for implementing descendant weighting in propogate
-                # as memory can be cheaply tracked by feeding it into here
 
         self.log = log_file # we'll dump to binary here
-        self.energies = [] # this'll fill out
+        self.reference_potentials = deque()
 
+        self.step_num = 0
+        self.num_time_steps = num_time_steps
+        self.steps_per_propagation = steps_per_propagation
 
-    def diffuse(self, n=1):
-        """Handles diffusion of walkers in DMC
-
-        :param n: number of steps to generate diffusions for
-        :type n:
-        :return:
-        :rtype:
-        """
-        newsies = self.walkers.get_displaced_coords(n)
-        self.coords = newsies[-1]
-        return newsies
+        self.descendent_weighting_delay = descendent_weighting_delay
+        self.descendent_weights = None
 
     def get_potential(self, coords=None, atoms=None):
         """Handles potential calls
@@ -54,7 +58,7 @@ class AbstractDMC(metaclass=ABCMeta):
             coords = self.walkers.coords
         coords = np.asarray(coords)
         if atoms is None:
-            atoms = self.coords.atoms
+            atoms = self.walkers.atoms
 
         if len(coords.shape) > 3:
             return np.array([ self.potential(atoms, crds) for crds in coords ])
@@ -63,28 +67,43 @@ class AbstractDMC(metaclass=ABCMeta):
 
     @abstractmethod
     def branch(self):
-        """Handles branching in DMC"""
+        """Handles branching in DMC. Returns the new energy array after the branching occurs.
+
+        :return:
+        :rtype:
+        """
         pass
 
     @abstractmethod
-    def update_weights(self, potentials, v_refs):
+    def update_weights(self, energies, weights):
         """Handles weights in DMC"""
         pass
 
     @abstractmethod
     def weight_descendants(self):
-        """Applies descendant weighting to the history saved in self.stack"""
+        """Applies descendant weighting"""
         pass
 
-    def propagate(self, n=1):
-        """Propagates the walker set n steps"""
+    def propagate(self, nsteps = None):
+        """Propagates the system forward n steps
 
-        new_coords = self.diffuse(n)
-        pots = self.get_potential(new_coords)
-        v_refs = np.average(pots, axis=1)
-        self.update_weights(pots, v_refs) # will write the weights to the WalkerSet at the end
-        self.energies.append(v_refs) # we'll flatten this out at the end with itertools.chain
-        self.snapshot()
+        :param nsteps: number of steps to propagate for; None means automatic
+        :type nsteps:
+        :return:
+        :rtype:
+        """
+        if nsteps is None:
+            nsteps = self.steps_per_propagation
+
+        coord_sets = self.walkers.displace(nsteps)
+        energies = self.potential(self.walkers.atoms, coord_sets)
+        self.step_num += nsteps
+
+        weights = self.update_weights(energies, self.walkers.weights)
+        self.walkers.weights = weights
+
+        self.branch()
+        self.weight_descendants()
 
     def snapshot(self, file=None):
         """Saves a snapshot of the simulation to file
@@ -98,7 +117,9 @@ class AbstractDMC(metaclass=ABCMeta):
 
         if file is None:
             file = self.log
-        if file is not None:
+        if isinstance(file, str):
             with open(file, "w+") as dump:
                 pickle.dump(self, dump)
+        else:
+            pickle.dump(self, file)
 

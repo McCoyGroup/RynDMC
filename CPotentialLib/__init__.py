@@ -1,2 +1,0 @@
-
-from .CPotential import *
