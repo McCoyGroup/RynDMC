@@ -48,6 +48,12 @@ class AbstractDMC(metaclass=ABCMeta):
         self.descendent_weighting_delay = descendent_weighting_delay
         self.descendent_weights = None
 
+    @property
+    def zpe(self):
+        return self.get_zpe()
+    def get_zpe(self, n = 30):
+        return np.average(np.array(self.reference_potentials[-30:]))
+
     def get_potential(self, coords=None, atoms=None):
         """Handles potential calls
 
