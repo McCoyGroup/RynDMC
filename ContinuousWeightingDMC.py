@@ -1,6 +1,9 @@
 from .AbstractDMC import AbstractDMC
 import numpy as np
 
+__all__ = ["ContinuousWeightingDMC"]
+
+## needs updates with everything we've learned from the RynLib implementation
 class ContinuousWeightingDMC(AbstractDMC):
 
     def __init__(self, *args, alpha = None, **kwargs):
@@ -59,7 +62,7 @@ class ContinuousWeightingDMC(AbstractDMC):
         return weights
 
     def weight_descendants(self):
-        do_it = self.step_num - self._last_desc_weighting_step >= self.descendent_weighting_delay
+        do_it = self.equilibrated and (self.step_num - self._last_desc_weighting_step >= self.descendent_weighting_delay)
         if do_it:
             self._last_desc_weighting_step = self.step_num
             num_walkers = len(self.walkers.coords)

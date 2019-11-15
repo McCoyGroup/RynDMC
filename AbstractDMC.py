@@ -3,6 +3,9 @@ import numpy as np
 from .WalkerSet import WalkerSet
 from .PotentialEvaluator import PotentialEvaluator
 
+__all__ = ["AbstractDMC"]
+
+## needs updates from the RynLib implementation
 
 ##################################################################################################################
 ##
@@ -18,6 +21,7 @@ class AbstractDMC(metaclass=ABCMeta):
                  D = None, time_step = None,
                  steps_per_propagation = None,
                  num_time_steps = None,
+                 equilibration = None,
                  potential = None,
                  descendent_weighting_delay = None,
                  log_file = None
@@ -48,11 +52,23 @@ class AbstractDMC(metaclass=ABCMeta):
         self.descendent_weighting_delay = descendent_weighting_delay
         self.descendent_weights = None
 
+        self._equilibrated = False
+        if isinstance(equilibration, int):
+            equilibration = lambda s, e=equilibration: s.step_num > e #classic lambda parameter binding
+        self.equilibration_check = equilibration
+
     @property
     def zpe(self):
         return self.get_zpe()
     def get_zpe(self, n = 30):
-        return np.average(np.array(self.reference_potentials[-30:]))
+        import itertools
+        return np.average(np.array(itertools.islice(self.reference_potentials, -n, 1)))
+
+    @property
+    def equilibrated(self):
+        if not self._equilibrated:
+            self._equilibrated = self.equilibration_check(self)
+        return self._equilibrated
 
     def get_potential(self, coords=None, atoms=None):
         """Handles potential calls

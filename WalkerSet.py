@@ -2,6 +2,7 @@ from McUtils.Data import UnitsData, AtomData
 from Psience.Coordinerds.CoordinateSystems import CoordinateSet
 import numpy as np
 
+__all__ = ["WalkerSet"]
 
 ##################################################################################################################
 ##

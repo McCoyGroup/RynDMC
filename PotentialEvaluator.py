@@ -1,5 +1,7 @@
 import numpy as np, multiprocessing as mp
-from CPotentialLib import CPotential
+from McUtils.CPotentialLib import CPotential
+
+__all__ = ["PotentialEvaluator"]
 
 ##################################################################################################################
 ##

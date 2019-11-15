@@ -2,6 +2,8 @@ from Psience import Wavefunction
 from McUtils.Plots import Plot
 import numpy as np
 
+__all__ = ["DMCWavefunction"]
+
 class DMCWavefunction(Wavefunction):
     @property
     def coords(self):
